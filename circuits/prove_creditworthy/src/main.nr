@@ -1,46 +1,88 @@
-use std::hash::pedersen_hash;
+// ═══════════════════════════════════════════════════════════════════════════
+//                    PROVE CREDITWORTHY CIRCUIT
+//          Comprehensive Privacy-Preserving Credit Assessment
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// This is the MAIN circuit - proves ALL THREE criteria in one proof:
+// 1. Credit Score >= minimum threshold
+// 2. DTI Ratio <= maximum threshold
+// 3. Payment History Rate >= minimum threshold
 
-// Main entry point - proves creditworthiness without revealing actual values
+use dep::std;
+
 fn main(
-    // Private inputs (never revealed)
-    credit_score: u64,
-    monthly_debt: u64,
-    monthly_income: u64,
-    successful_payments: u64,
-    total_payments: u64,
-    salt: Field,
+    // PRIVATE: Credit Score
+    credit_score: Field,
+    score_salt: Field,
+
+    // PRIVATE: DTI
+    monthly_income: Field,
+    monthly_debt: Field,
+    income_salt: Field,
+    debt_salt: Field,
+
+    // PRIVATE: Payment History
+    on_time_payments: Field,
+    total_payments: Field,
+    history_salt: Field,
+
+    // PUBLIC: Commitments
+    pub master_commitment: Field,
+    pub score_commitment: Field,
+    pub income_commitment: Field,
+    pub debt_commitment: Field,
+    pub history_commitment: Field,
+
+    // PUBLIC: Thresholds
+    pub min_credit_score: Field,
+    pub max_dti_bps: Field,
+    pub min_payment_rate_bps: Field,
+    pub min_payment_count: Field,
+
+    // PUBLIC: Binding
+    pub pool_id: Field,
+    pub nonce: Field,
+    pub timestamp: Field
+) {
+    // STEP 1: Verify All Commitments
+    let computed_score = std::hash::pedersen_hash([credit_score, score_salt]);
+    assert(computed_score == score_commitment);
     
-    // Public inputs (verification parameters)
-    min_credit_score: pub u64,
-    max_dti_ratio: pub u64,
-    min_payment_rate: pub u64
-) -> pub ([u8; 32], u8, bool) {
+    let computed_income = std::hash::pedersen_hash([monthly_income, income_salt]);
+    assert(computed_income == income_commitment);
     
-    // 1. Verify credit score meets minimum threshold
-    let score_ok = credit_score >= min_credit_score;
+    let computed_debt = std::hash::pedersen_hash([monthly_debt, debt_salt]);
+    assert(computed_debt == debt_commitment);
     
-    // 2. Calculate and verify DTI ratio (debt * 100 / income < max)
-    let dti_ratio = (monthly_debt * 100) / monthly_income;
-    let dti_ok = dti_ratio <= max_dti_ratio;
+    let computed_history = std::hash::pedersen_hash([on_time_payments, total_payments, history_salt]);
+    assert(computed_history == history_commitment);
     
-    // 3. Verify payment history (successful * 100 / total >= min)
-    let payment_rate = (successful_payments * 100) / total_payments;
-    let payment_ok = payment_rate >= min_payment_rate;
-    
-    // 4. Create commitment (hash of score + salt)
-    let commitment = pedersen_hash([credit_score as Field, salt]);
-    let commitment_bytes: [u8; 32] = commitment.to_be_bytes();
-    
-    // 5. Determine credit tier based on score
-    let tier: u8 = if credit_score >= 800 { 5 }
-               else if credit_score >= 740 { 4 }
-               else if credit_score >= 670 { 3 }
-               else if credit_score >= 580 { 2 }
-               else { 1 };
-    
-    // 6. Final creditworthiness = all checks pass
-    let is_creditworthy = score_ok & dti_ok & payment_ok;
-    
-    // Return public outputs
-    (commitment_bytes, tier, is_creditworthy)
+    // Master commitment links all
+    let computed_master = std::hash::pedersen_hash([
+        computed_score, computed_income, computed_debt, computed_history
+    ]);
+    assert(computed_master == master_commitment);
+
+    // STEP 2: Credit Score Check
+    assert(credit_score as u32 >= 300);
+    assert(credit_score as u32 <= 850);
+    assert(credit_score as u32 >= min_credit_score as u32);
+
+    // STEP 3: DTI Ratio Check (debt * 10000 <= income * max_dti)
+    assert(monthly_income as u64 > 0);
+    let debt_scaled = monthly_debt as u64 * 10000;
+    let income_threshold = monthly_income as u64 * max_dti_bps as u64;
+    assert(debt_scaled <= income_threshold);
+
+    // STEP 4: Payment History Check
+    assert(total_payments as u64 >= min_payment_count as u64);
+    assert(on_time_payments as u64 <= total_payments as u64);
+    let on_time_scaled = on_time_payments as u64 * 10000;
+    let rate_threshold = total_payments as u64 * min_payment_rate_bps as u64;
+    assert(on_time_scaled >= rate_threshold);
+
+    // STEP 5: Binding
+    assert(pool_id != 0);
+    assert(nonce != 0);
+    assert(timestamp != 0);
 }
