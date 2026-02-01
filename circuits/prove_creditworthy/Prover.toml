@@ -1,0 +1,12 @@
+# Private inputs (kept secret)
+credit_score = "723"
+monthly_debt = "2000"
+monthly_income = "8000"
+successful_payments = "95"
+total_payments = "100"
+salt = "12345678901234567890"
+
+# Public inputs (verification parameters)
+min_credit_score = "650"
+max_dti_ratio = "43"
+min_payment_rate = "90"
