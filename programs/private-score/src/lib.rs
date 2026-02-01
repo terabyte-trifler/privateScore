@@ -1,3 +1,16 @@
+//! ═══════════════════════════════════════════════════════════════════════════
+//! PRIVATESCORE - Privacy-Preserving Credit Scoring on Solana
+//! ═══════════════════════════════════════════════════════════════════════════
+//!
+//! A DeFi lending protocol that uses zero-knowledge proofs to enable
+//! reduced collateral borrowing while preserving user privacy.
+//!
+//! Key Features:
+//! - ZK-verified credit scores (Noir proofs via Sunspot)
+//! - Reduced collateral for creditworthy borrowers (120% vs 150%)
+//! - Compressed credit commitments (Light Protocol)
+//! - Selective disclosure for compliance (Range Protocol)
+
 use anchor_lang::prelude::*;
 
 pub mod errors;
@@ -6,26 +19,25 @@ pub mod state;
 
 use instructions::*;
 
-declare_id!("7EQoGy3JbVLqKL6Rn4Mx678nCAPhyRzydzpzCA8W29kV");
+declare_id!("PSCore1111111111111111111111111111111111111");
 
 #[program]
 pub mod privatescore {
     use super::*;
 
-    // Pool Management
+    // ═══════════════════════════════════════════════════════════════════════
+    // POOL MANAGEMENT
+    // ═══════════════════════════════════════════════════════════════════════
+
     pub fn initialize_pool(
         ctx: Context<InitializePool>,
-        name: String,
+        pool_id: u64,
         base_collateral_ratio: u16,
         credit_collateral_ratio: u16,
-        interest_rate_bps: u16,
+        interest_rate: u16,
         min_credit_score: u16,
-        max_dti_ratio: u16,
     ) -> Result<()> {
-        instructions::initialize_pool::handler(
-            ctx, name, base_collateral_ratio, credit_collateral_ratio,
-            interest_rate_bps, min_credit_score, max_dti_ratio,
-        )
+        instructions::initialize_pool::handler(ctx, pool_id, base_collateral_ratio, credit_collateral_ratio, interest_rate, min_credit_score)
     }
 
     pub fn deposit(ctx: Context<Deposit>, amount: u64) -> Result<()> {
@@ -36,30 +48,23 @@ pub mod privatescore {
         instructions::withdraw::handler(ctx, amount)
     }
 
-    // Credit Management
-    pub fn register_credit(
-        ctx: Context<RegisterCredit>,
-        score_commitment: [u8; 32],
-        tier: u8,
-    ) -> Result<()> {
-        instructions::register_credit::handler(ctx, score_commitment, tier)
+    // ═══════════════════════════════════════════════════════════════════════
+    // CREDIT MANAGEMENT
+    // ═══════════════════════════════════════════════════════════════════════
+
+    pub fn register_credit(ctx: Context<RegisterCredit>, commitment: [u8; 32], tier: u8) -> Result<()> {
+        instructions::register_credit::handler(ctx, commitment, tier)
     }
 
-    pub fn update_credit(
-        ctx: Context<UpdateCredit>,
-        new_commitment: [u8; 32],
-        new_tier: u8,
-    ) -> Result<()> {
+    pub fn update_credit(ctx: Context<UpdateCredit>, new_commitment: [u8; 32], new_tier: u8) -> Result<()> {
         instructions::update_credit::handler(ctx, new_commitment, new_tier)
     }
 
-    // Borrowing - THE CORE FUNCTIONALITY
-    pub fn verify_and_borrow(
-        ctx: Context<VerifyAndBorrow>,
-        amount: u64,
-        proof: Vec<u8>,
-        public_inputs: Vec<u8>,
-    ) -> Result<()> {
+    // ═══════════════════════════════════════════════════════════════════════
+    // BORROWING OPERATIONS
+    // ═══════════════════════════════════════════════════════════════════════
+
+    pub fn verify_and_borrow(ctx: Context<VerifyAndBorrow>, amount: u64, proof: Vec<u8>, public_inputs: Vec<u8>) -> Result<()> {
         instructions::verify_and_borrow::handler(ctx, amount, proof, public_inputs)
     }
 
@@ -75,14 +80,12 @@ pub mod privatescore {
         instructions::liquidate::handler(ctx)
     }
 
-    // Range Compliance - Selective Disclosure
-    pub fn grant_viewing_access(
-        ctx: Context<GrantViewingAccess>,
-        viewer: Pubkey,
-        scope: ViewingScope,
-        duration_seconds: i64,
-    ) -> Result<()> {
-        instructions::grant_viewing_access::handler(ctx, viewer, scope, duration_seconds)
+    // ═══════════════════════════════════════════════════════════════════════
+    // RANGE PROTOCOL - SELECTIVE DISCLOSURE
+    // ═══════════════════════════════════════════════════════════════════════
+
+    pub fn grant_viewing_access(ctx: Context<GrantViewingAccess>, viewer: Pubkey, access_level: u8, expiry: i64) -> Result<()> {
+        instructions::grant_viewing_access::handler(ctx, viewer, access_level, expiry)
     }
 
     pub fn revoke_viewing_access(ctx: Context<RevokeViewingAccess>) -> Result<()> {
