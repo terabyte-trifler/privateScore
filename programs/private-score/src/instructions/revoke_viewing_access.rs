@@ -21,8 +21,7 @@ pub struct RevokeViewingAccess<'info> {
 
 pub fn handler(ctx: Context<RevokeViewingAccess>) -> Result<()> {
     let viewing_key = &mut ctx.accounts.viewing_key;
-    let viewer = viewing_key.viewer;
-
+    let viewer = viewing_key.viewer;  
     viewing_key.revoke();
 
     msg!("Viewing access revoked for {}", viewer);

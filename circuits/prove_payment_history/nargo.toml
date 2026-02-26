@@ -1,0 +1,8 @@
+[package]
+name = "prove_payment_history"
+type = "bin"
+authors = ["PrivateScore Team"]
+compiler_version = ">=0.30.0"
+description = "ZK proof that on-time payment rate meets minimum requirement"
+
+[dependencies]

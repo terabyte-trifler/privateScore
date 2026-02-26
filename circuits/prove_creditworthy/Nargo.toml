@@ -1,7 +1,9 @@
+
 [package]
-name = "prove_creditworthy"
+name = "prove_score_improved"
 type = "bin"
-authors = [""]
+authors = ["PrivateScore Team"]
 compiler_version = ">=0.30.0"
+description = "ZK proof that credit score has increased using two-commitment comparison"
 
 [dependencies]

@@ -1,0 +1,16 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# PROVER INPUTS - prove_payment_history
+# ═══════════════════════════════════════════════════════════════════════════════
+# Run: nargo prove
+
+# PRIVATE INPUTS
+on_time_payments = "95"     # 95 on-time payments
+total_payments = "100"      # 100 total (95% rate)
+history_salt = "33333333333333333333333333333333"
+
+# PUBLIC INPUTS
+history_commitment = ""     # Computed during proving
+min_payment_rate = "9000"   # 90% minimum rate
+min_payment_count = "10"    # At least 10 payments required
+pool_id = "1"
+nonce = "1"

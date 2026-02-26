@@ -1,6 +1,3 @@
-
-Copy
-
 [package]
 name = "prove_score_improved"
 type = "bin"

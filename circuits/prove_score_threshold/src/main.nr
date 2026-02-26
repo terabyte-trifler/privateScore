@@ -1,95 +1,83 @@
-// ═══════════════════════════════════════════════════════════════════════════
-//                    PROVE SCORE THRESHOLD CIRCUIT
-//                       (Aztec/Noir $10k Bounty)
-// ═══════════════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════════════════
+// PROVE SCORE THRESHOLD CIRCUIT
+// ═══════════════════════════════════════════════════════════════════════════════
 //
-// This circuit proves that a user's credit score exceeds a minimum threshold
-// WITHOUT revealing the actual score.
+// Purpose: Prove credit score ≥ minimum threshold WITHOUT revealing actual score
 //
-// What the proof demonstrates:
-// ✓ User knows a credit score that hashes to their public commitment
-// ✓ That score is >= the minimum threshold
-// ✓ The proof is bound to a specific pool and nonce (replay protection)
+// What the verifier learns:
+//   ✓ The prover knows a score that hashes to the public commitment
+//   ✓ The score is >= min_score threshold
+//   ✓ The score is within valid FICO range (300-850)
 //
 // What remains private:
-// - The actual credit score (e.g., 720)
-// - The salt used in the commitment
+//   ✗ The actual credit score value
+//   ✗ The salt used in the commitment
+// ═══════════════════════════════════════════════════════════════════════════════
 
-use dep::std;
+use dep::std::hash::pedersen_hash;
+
+// FICO score range constants
+global MIN_VALID_SCORE: u32 = 300;
+global MAX_VALID_SCORE: u32 = 850;
 
 fn main(
-    // PRIVATE INPUTS (Known only to the prover/user)
-    credit_score: Field,         // The actual score (e.g., 720)
-    salt: Field,                 // Random salt for hiding
-
-    // PUBLIC INPUTS (Visible to everyone)
-    pub score_commitment: Field,  // Pedersen(score || salt)
-    pub min_score: Field,         // Threshold (e.g., 650)
-    pub pool_id: Field,           // Binds to specific pool
-    pub nonce: Field,             // Replay protection
-    pub timestamp: Field          // Freshness
+    // PRIVATE INPUTS (known only to prover)
+    credit_score: Field,     // Actual credit score (PRIVATE)
+    salt: Field,             // Random salt for hiding (PRIVATE)
+    
+    // PUBLIC INPUTS (visible to verifier)
+    score_commitment: pub Field,  // Pedersen commitment to score
+    min_score: pub Field,         // Minimum score threshold
+    pool_id: pub Field,           // Pool identifier
+    nonce: pub Field              // Replay protection nonce
 ) {
-    // ═══════════════════════════════════════════════════════════════════════
-    // CONSTRAINT 1: Score Validity (300-850 FICO range)
-    // ═══════════════════════════════════════════════════════════════════════
+    // ═══════════════════════════════════════════════════════════════════════════
+    // CONSTRAINT 1: Verify commitment
+    // ═══════════════════════════════════════════════════════════════════════════
     
-    let min_valid_score: Field = 300;
-    let max_valid_score: Field = 850;
+    let computed_commitment = pedersen_hash([credit_score, salt]);
+    assert(computed_commitment == score_commitment, "Commitment verification failed");
     
-    assert(credit_score as u32 >= min_valid_score as u32);
-    assert(credit_score as u32 <= max_valid_score as u32);
-
-    // ═══════════════════════════════════════════════════════════════════════
-    // CONSTRAINT 2: Commitment Verification
-    // ═══════════════════════════════════════════════════════════════════════
+    // ═══════════════════════════════════════════════════════════════════════════
+    // CONSTRAINT 2: Score meets minimum threshold
+    // ═══════════════════════════════════════════════════════════════════════════
     
-    // Compute expected commitment: Pedersen(score || salt)
-    let computed_commitment = std::hash::pedersen_hash([credit_score, salt]);
+    let score_u32 = credit_score as u32;
+    let min_score_u32 = min_score as u32;
     
-    // Must match the registered commitment on-chain
-    assert(computed_commitment == score_commitment);
-
-    // ═══════════════════════════════════════════════════════════════════════
-    // CONSTRAINT 3: Score Threshold Check (THE KEY CONSTRAINT!)
-    // ═══════════════════════════════════════════════════════════════════════
+    assert(score_u32 >= min_score_u32, "Score does not meet minimum threshold");
     
-    // This is what enables privacy-preserving credit:
-    // We prove score >= threshold without revealing the actual score
-    assert(credit_score as u32 >= min_score as u32);
-
-    // ═══════════════════════════════════════════════════════════════════════
-    // CONSTRAINT 4: Binding and Replay Protection
-    // ═══════════════════════════════════════════════════════════════════════
+    // ═══════════════════════════════════════════════════════════════════════════
+    // CONSTRAINT 3: Score within valid FICO range (300-850)
+    // ═══════════════════════════════════════════════════════════════════════════
     
-    assert(pool_id != 0);
-    assert(nonce != 0);
-    assert(timestamp != 0);
+    assert(score_u32 >= MIN_VALID_SCORE, "Score below minimum valid range");
+    assert(score_u32 <= MAX_VALID_SCORE, "Score above maximum valid range");
+    
+    // ═══════════════════════════════════════════════════════════════════════════
+    // CONSTRAINT 4: Pool and nonce validation
+    // ═══════════════════════════════════════════════════════════════════════════
+    
+    assert(pool_id != 0, "Invalid pool ID");
+    assert(nonce != 0, "Invalid nonce");
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════════════════
 // TESTS
-// ═══════════════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════════════════
 
 #[test]
-fn test_valid_proof() {
+fn test_valid_score_above_threshold() {
     let score: Field = 720;
-    let salt: Field = 12345;
-    let min_score: Field = 650;
-    
-    let commitment = std::hash::pedersen_hash([score, salt]);
-    
-    // This should pass: 720 >= 650
-    main(score, salt, commitment, min_score, 1, 1, 1704067200);
+    let salt: Field = 12345678901234567890;
+    let commitment = pedersen_hash([score, salt]);
+    main(score, salt, commitment, 650, 1, 1);
 }
 
 #[test(should_fail)]
-fn test_score_below_threshold() {
-    let score: Field = 600;  // Below 650!
-    let salt: Field = 12345;
-    let min_score: Field = 650;
-    
-    let commitment = std::hash::pedersen_hash([score, salt]);
-    
-    // This should FAIL: 600 < 650
-    main(score, salt, commitment, min_score, 1, 1, 1704067200);
+fn test_score_below_threshold_fails() {
+    let score: Field = 600;
+    let salt: Field = 12345678901234567890;
+    let commitment = pedersen_hash([score, salt]);
+    main(score, salt, commitment, 650, 1, 1);
 }

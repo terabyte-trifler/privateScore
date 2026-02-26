@@ -1,0 +1,8 @@
+[package]
+name = "prove_dti_ratio"
+type = "bin"
+authors = ["PrivateScore Team"]
+compiler_version = ">=0.30.0"
+description = "ZK proof that DTI ratio is below maximum using division-free arithmetic"
+
+[dependencies]

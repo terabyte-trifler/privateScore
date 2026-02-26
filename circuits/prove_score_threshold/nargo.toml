@@ -1,0 +1,8 @@
+[package]
+name = "prove_score_threshold"
+type = "bin"
+authors = ["PrivateScore Team"]
+compiler_version = ">=0.30.0"
+description = "ZK proof that credit score meets minimum threshold without revealing actual score"
+
+[dependencies]

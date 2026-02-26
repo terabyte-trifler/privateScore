@@ -1,0 +1,17 @@
+Prover · TOML
+Copy
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# PROVER INPUTS - prove_score_threshold
+# ═══════════════════════════════════════════════════════════════════════════════
+# Run: nargo prove
+
+# PRIVATE INPUTS (only prover knows these)
+credit_score = "720"
+salt = "12345678901234567890123456789012345678901234567890"
+
+# PUBLIC INPUTS (verifier will see these)
+score_commitment = ""  # Computed from score + salt during proving
+min_score = "650"
+pool_id = "1"
+nonce = "1"
